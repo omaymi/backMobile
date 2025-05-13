@@ -80,3 +80,26 @@ def get_professeurs_par_filiere_et_module():
 
     professeur_list = [{"id": p[0], "nom": p[1], "email": p[2]} for p in professeurs]
     return jsonify(professeur_list)
+@professeur_bp.route('/professeurs/filiere/<int:filiere_id>', methods=['GET'])
+def get_professeurs_by_filiere(filiere_id):
+    cursor = mysql.connection.cursor()
+    cursor.execute("""
+        SELECT id, nom, filiere_id, module_id
+        FROM professeurs
+        WHERE filiere_id = %s
+    """, (filiere_id,))
+    rows = cursor.fetchall()
+    cursor.close()
+
+    if rows:
+        professeurs = [{"id": row[0], "nom": row[1], "filiere_id": row[2], "module_id": row[3]} for row in rows]
+        return jsonify(professeurs)
+    else:
+        return jsonify({"error": "Aucun professeur trouvé pour cette filière"}), 404
+@professeur_bp.route('/professeurs/<int:id>', methods=['DELETE'])
+def supprimer_professeur(id):
+    cursor = mysql.connection.cursor()
+    cursor.execute("DELETE FROM professeurs WHERE id = %s", (id,))
+    mysql.connection.commit()
+    cursor.close()
+    return jsonify({"message": "Professeur supprimé avec succès"})

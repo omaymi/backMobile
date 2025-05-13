@@ -75,3 +75,11 @@ def salles_disponibles():
     salles = [{"id": row[0], "nom": row[1]} for row in rows]
 
     return jsonify(salles)
+
+@salle_bp.route('/salles/<int:id>', methods=['DELETE'])
+def supprimer_salle(id):
+    cursor = mysql.connection.cursor()
+    cursor.execute("DELETE FROM salles WHERE id = %s", (id,))
+    mysql.connection.commit()
+    cursor.close()
+    return jsonify({"message": "Salle supprimée avec succès"})

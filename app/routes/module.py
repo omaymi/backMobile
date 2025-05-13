@@ -53,3 +53,11 @@ def liste_modules():
     modules = [{"id": row[0], "nom": row[1]} for row in rows]
 
     return jsonify(modules)
+
+@module_bp.route('/modules/<int:id>', methods=['DELETE'])
+def supprimer_module(id):
+    cursor = mysql.connection.cursor()
+    cursor.execute("DELETE FROM modules WHERE id = %s", (id,))
+    mysql.connection.commit()
+    cursor.close()
+    return jsonify({"message": "Module supprimé avec succès"})

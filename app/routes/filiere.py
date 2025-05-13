@@ -17,6 +17,14 @@ def ajouter_filiere():
     cursor.close()
     return jsonify({"message": "Filière ajoutée avec succès"})
 
+@filiere_bp.route('/filieres/<int:id>', methods=['DELETE'])
+def supprimer_filiere(id):
+    cursor = mysql.connection.cursor()
+    cursor.execute("DELETE FROM filieres WHERE id = %s", (id,))
+    mysql.connection.commit()
+    cursor.close()
+    return jsonify({"message": "Filière supprimée avec succès"})
+
 @filiere_bp.route('/filieres', methods=['GET'])
 def liste_filieres():
     cursor = mysql.connection.cursor()

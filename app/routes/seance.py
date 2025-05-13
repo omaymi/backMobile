@@ -140,3 +140,39 @@ def get_all_seances():
         })
 
     return jsonify(seances), 200
+
+# fetch seance by filiere
+
+@seance_bp.route('/seances/filiere/<int:filiere_id>', methods=['GET'])
+def get_seances_by_filiere(filiere_id):
+    cursor = mysql.connection.cursor()
+    query = """
+        SELECT sp.id, sp.date, sp.heure_debut, sp.heure_fin, m.nom AS module, p.nom AS professeur, sp.salle
+        FROM seanceprofesseur sp
+        JOIN modules m ON sp.module_id = m.id
+        JOIN professeurs p ON sp.professeur_id = p.id
+        JOIN filieres f ON m.filiere_id = f.id
+        WHERE f.id = %s
+        ORDER BY sp.date DESC, sp.heure_debut ASC
+    """
+    cursor.execute(query, (filiere_id,))
+    result = cursor.fetchall()
+    cursor.close()
+
+    seances = []
+    for row in result:
+        seances.append({
+            'id': row[0],
+            'date': row[1].strftime('%Y-%m-%d'),
+            'heure_debut': str(row[2]).split('.')[0],
+            'heure_fin': str(row[3]).split('.')[0],
+            'module': row[4],
+            'professeur': row[5],
+            'salle': row[6]
+        })
+
+    return jsonify(seances), 200
+
+
+
+
