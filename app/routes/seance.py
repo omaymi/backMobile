@@ -71,41 +71,7 @@ def ajouter_seance_professeur():
     mysql.connection.commit()
     cursor.close()
 
-    return jsonify({'message': 'Séance ajoutée avec succès '}), 201
-
-@seance_bp.route('/seance/professeur/<int:professeur_id>', methods=['GET'])
-def get_seances_by_professeur(professeur_id):
-    cursor = mysql.connection.cursor()
-
-    query = """
-        SELECT sp.id, sp.professeur_id, sp.module_id, sp.salle, sp.date, sp.heure_debut, sp.heure_fin,
-               p.nom AS nom_professeur, m.nom AS nom_module
-        FROM seanceprofesseur sp
-        JOIN professeurs p ON sp.professeur_id = p.id
-        JOIN modules m ON sp.module_id = m.id
-        WHERE sp.professeur_id = %s
-        ORDER BY sp.date DESC, sp.heure_debut ASC
-    """
-    cursor.execute(query, (professeur_id,))
-    result = cursor.fetchall()
-    cursor.close()
-
-    seances = []
-    for row in result:
-        seances.append({
-            'id': row[0],
-            'professeur_id': row[1],
-            'module_id': row[2],
-            'salle': row[3],
-            'date': row[4].strftime('%Y-%m-%d'),
-            'heure_debut': str(row[5]).split('.')[0],
-            'heure_fin': str(row[6]).split('.')[0],
-            'professeur': row[7],
-            'module': row[8]
-        })
-
-    return jsonify(seances), 200
-
+    return jsonify({'message': 'Séance ajoutée avec succès'}), 201
 
 @seance_bp.route('/seance', methods=['GET'])
 def get_all_seances():
@@ -134,14 +100,56 @@ def get_all_seances():
             'salle': row[3],
             'date': row[4].strftime('%Y-%m-%d'),
             'heure_debut': str(row[5]).split('.')[0],  # supprime les microsecondes
-            'heure_fin': str(row[5]).split('.')[0],  # supprime les microsecondes
+            'heure_fin': str(row[6]).split('.')[0],    # supprime les microsecondes
             'professeur': row[7],
             'module': row[8]
         })
 
     return jsonify(seances), 200
 
-# fetch seance by filiere
+@seance_bp.route('/seance/<int:seance_id>/etudiants_presents', methods=['GET'])
+def get_etudiants_presents(seance_id):
+    cursor = mysql.connection.cursor()
+    query = "SELECT etudiant_nom FROM presence1 WHERE seance_id = %s"
+    cursor.execute(query, (seance_id,))
+    result = cursor.fetchall()
+    cursor.close()
+    etudiants = [row[0] for row in result]
+    return jsonify(etudiants), 200
+
+@seance_bp.route('/seance/<int:seance_id>/presence1', methods=['POST'])
+def save_presence(seance_id):
+    data = request.get_json()
+    if not data or 'presences' not in data or 'seance_id' not in data:
+        return jsonify({'error': 'Données de présence ou seance_id manquants'}), 400
+
+    cursor = mysql.connection.cursor()
+
+    # Vérifier si la séance existe
+    cursor.execute("SELECT * FROM seanceprofesseur WHERE id = %s", (seance_id,))
+    if not cursor.fetchone():
+        cursor.close()
+        return jsonify({'error': 'Séance non trouvée'}), 404
+
+    try:
+        presences = data['presences']
+        for presence in presences:
+            etudiant_nom = presence.get('etudiant_nom')
+            timestamp = presence.get('timestamp')
+            if not etudiant_nom or not timestamp:
+                continue  # Skip invalid entries
+            query = """
+                INSERT INTO presence1 (seance_id, etudiant_nom, timestamp)
+                VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE timestamp = %s
+            """
+            cursor.execute(query, (seance_id, etudiant_nom, timestamp, timestamp))
+        mysql.connection.commit()
+        cursor.close()
+        return jsonify({'message': f'{len(presences)} présences enregistrées pour la séance {seance_id}'}), 201
+    except Exception as e:
+        cursor.close()
+        return jsonify({'error': f'Erreur lors de l\'enregistrement: {str(e)}'}), 500
 
 @seance_bp.route('/seances/filiere/<int:filiere_id>', methods=['GET'])
 def get_seances_by_filiere(filiere_id):
@@ -172,7 +180,3 @@ def get_seances_by_filiere(filiere_id):
         })
 
     return jsonify(seances), 200
-
-
-
-
